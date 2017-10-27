@@ -1,2 +1,10 @@
-# ucasgis
-Geographical Information Science Tutorial and Practice course in UCAS
+# GIS应用实践课程
+
+## 介绍
+中国科学院大学资源与环境学院，2017年秋季学期，地理信息系统（GIS）应用实践AB，课程网站。
+
+- **首席教授**：
+	- 宋现锋 教授 （中国科学院大学）
+	- [杜云艳](http://sourcedb.igsnrr.cas.cn/zw/zjrck/200906/t20090626_1842210.html) 研究员 （中国科学院地理科学与资源研究所）
+
+
