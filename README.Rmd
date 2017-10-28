@@ -90,4 +90,4 @@ output:
 
 ---
 
-<center>Copyright UCAS GIS, 2017</center>
+<center> Copyright UCAS GIS, 2017. </center>
