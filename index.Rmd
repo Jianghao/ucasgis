@@ -81,3 +81,8 @@ output:
 ## 主要参考书目
 
 - Kang-tsung Chang著，陈建飞 连莲译注，地理信息系统导论（第7版），北京：电子工业出版社，2014年.
+
+## 课件下载
+
+Chapter 6: [几何校正](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter6.pdf)
+Chapter 9: [地图制图](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter9.pdf)
