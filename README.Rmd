@@ -1,3 +1,16 @@
+---
+title: "GIS 应用与实践"
+# author: "Jianghao Wang"
+# date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect # architect cayman leonids tactile hpstr
+    highlight: github # vignette github
+    toc: true
+    toc_depth: 2
+    number_sections: true
+---
+
 # GIS应用实践课程
 
 ## 介绍
@@ -73,3 +86,8 @@
 
 - Chapter 6: [几何校正](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter6.pdf)
 - Chapter 9: [地图制图](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter9.pdf)
+
+
+---
+
+<center>Copyright UCAS GIS, 2017</center>
