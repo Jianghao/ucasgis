@@ -86,3 +86,8 @@ output:
 
 - Chapter 6: [几何校正](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter6.pdf)
 - Chapter 9: [地图制图](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter9.pdf)
+
+
+---
+
+<center>Copyright UCAS GIS, 2017</center>
