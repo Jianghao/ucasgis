@@ -8,11 +8,12 @@ output:
     highlight: github # vignette github
     toc: true
     toc_depth: 2
-    number_sections: true
+    number_sections: false
 ---
 
-# GIS应用实践课程
+[课程主页 giser.me](https://github.com/Jianghao/ucasgis/tree/gh-pages/) | [数据下载](https://github.com/Jianghao/ucasgis/tree/gh-pages/datasets_v7/) | [课件下载](https://github.com/Jianghao/ucasgis/tree/gh-pages/slides) 
 
+# GIS 应用与实践课程
 ## 介绍
 中国科学院大学资源与环境学院，2017年秋季学期，地理信息系统（GIS）应用实践AB，课程网站。
 
@@ -87,6 +88,9 @@ output:
 - Chapter 6: [几何校正](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter6.pdf)
 - Chapter 9: [地图制图](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter9.pdf)
 
+## 数据下载
+
+数据目录：https://github.com/Jianghao/ucasgis/tree/gh-pages/datasets_v7/
 
 ---
 
