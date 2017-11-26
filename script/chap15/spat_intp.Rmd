@@ -1,0 +1,291 @@
+---
+title: "第15章 空间插值"
+author: "Jianghao Wang"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect # architect cayman leonids tactile hpstr
+    highlight: github # vignette github
+    toc: true
+    toc_depth: 4
+    number_sections: false
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+## 引言
+基于《地理信息系统导论（第7版）》中**第15章**的内容（pp. 376 - 381），设计用`R语言`实现对应的空间插值练习.
+
+包括5个练习：
+
++ 练习1：用**趋势面**模型作插值
++ 练习2：利用**核密度**估算法
++ 练习3：用**IDW**作插值
++ 练习4：用**普通克里金**作插值
++ 练习5：用**泛克里金**作插值
+
+## 练习1：用趋势面模型作插值
+所需数据：
+
+- `stations.shp`: 爱荷华州及其周围175个气象站点数据的shapefile；
+- `idoutlgd`: 爱荷华州轮廓的栅格
+
+### step 1: 加载数据和显示数据
+
+#### `stations`数据探索
+```{r}
+## 加载stations数据
+library(sf)
+stations <- read_sf("stations.shp")
+## 显示stations的属性
+library(knitr)
+kable(head(stations), caption = "Attibute of Stations")
+str(stations)
+```
+
+可视化stations数据
+```{r}
+library(ggplot2)
+stations %>% ggplot() + geom_sf(aes(size = ANN_PREC, colour = ANN_PREC))
+plot(stations)
+```
+
+
+#### `idoutlgd`轮廓的栅格数据
+
+```{r}
+library(raster)
+library(rgdal)
+bound <- raster("idoutlgd/w001001.adf")
+sum(bound)
+plot(bound)
+```
+
+
+### step 2: 探索性数据分析
+降水数据的统计分布
+
+```{r}
+ggplot(stations, aes(ANN_PREC)) +
+  geom_histogram() +
+  geom_density()
+```
+
+
+
+研究降水的空间趋势变化
+
+1) 降水沿着经度的变化
+
+```{r}
+ggplot(stations, aes(x = Long, y = ANN_PREC)) +
+  geom_point(aes(colour = ANN_PREC)) +
+  geom_smooth()
+```
+
+2) 降水沿着纬度的变化
+```{r}
+ggplot(stations, aes(x = Lat, y = ANN_PREC)) +
+  geom_point(aes(size = ANN_PREC)) +
+  geom_smooth() +
+  theme_bw()
+```
+
+### step 3: 整体多项式插值
+
+#### 1st order polynomial fit
+
+```{r}
+# Define the 1st order polynomial equation
+f.1 <- as.formula(ANN_PREC ~ X + Y)
+
+# Add X and Y to station and bound
+coord <- st_coordinates(stations)
+stations$X <- as.vector(coord[,1])
+stations$Y <- as.vector(coord[,2])
+
+# Run the regression model
+lm.1 <- lm( f.1, data = stations)
+
+# Use the regression model output to interpolate the surface
+grd <- as(bound, 'SpatialGridDataFrame')
+coord <- coordinates(grd)
+grd$X <- coord[,1]
+grd$Y <- coord[,2]
+dat.1st <- SpatialGridDataFrame(grd, data.frame(var1.pred = predict(lm.1, newdata=grd))) 
+
+# Clip the interpolated raster to bound
+r <- raster(dat.1st)
+r.m <- mask(r, bound)
+
+# Plot the map
+library(tmap)
+tm_shape(r.m) + 
+  tm_raster(n=10, palette="RdBu", auto.palette.mapping=FALSE, 
+            title="Predicted precipitation") +
+  tm_shape(stations) + tm_dots(size=0.2) +
+  tm_legend(legend.outside=TRUE)
+```
+
+
+#### 2st order polynomial fit
+
+```{r}
+# Define the 2nd order polynomial equation
+f.2 <- as.formula(ANN_PREC ~ X + Y + I(X*X)+I(Y*Y) + I(X*Y))
+
+# Add X and Y to station and bound
+coord <- st_coordinates(stations)
+stations$X <- as.vector(coord[,1])
+stations$Y <- as.vector(coord[,2])
+ 
+# Run the regression model
+lm.2 <- lm( f.2, data= stations)
+
+# Use the regression model output to interpolate the surface
+dat.2nd <- SpatialGridDataFrame(grd, data.frame(var1.pred = predict(lm.2, newdata=grd))) 
+
+# Clip the interpolated raster to bound
+r   <- raster(dat.2nd)
+r.m <- mask(r, bound)
+
+# Plot the map
+tm_shape(r.m) + 
+  tm_raster(n=10, palette="RdBu", auto.palette.mapping=FALSE, 
+            title="Predicted precipitation") +
+  tm_shape(stations) + tm_dots(size=0.2) +
+  tm_legend(legend.outside=TRUE)
+```
+
+#### 更高阶多项式插值
+方法同上。
+
+## 练习2：利用核密度估计法
+所需数据：
+
+- `deer.shp`: 显示鹿的位置的点shapefile。
+
+习作二利用核密度估计法计算每公顷范围内鹿的平均数目。鹿的位置数据的最小分辨率为50m。
+
+step 1：加载鹿的数据集
+```{r}
+deer <- read_sf("deer.shp")
+deer %>% ggplot() + geom_sf(aes(size = SIGHTINGS, colour = SIGHTINGS))
+plot(deer)
+```
+
+
+## 练习3：利用IDW做插值
+
+```{r}
+library(gstat)
+
+stations.sp <- as(stations, 'Spatial')
+# Interpolate the grid cells using a power value of 2 (idp=2.0)
+P.idw <- gstat::idw(ANN_PREC ~ 1, stations.sp, newdata=grd, idp=2.0, nmax = 10)
+
+# Convert to raster object then clip to Texas
+r       <- raster(P.idw)
+r.m     <- mask(r, bound)
+
+# Plot
+tm_shape(r.m) + 
+  tm_raster(n=10,palette = "RdBu", auto.palette.mapping = FALSE,
+            title="Predicted precipitation") + 
+  tm_shape(stations.sp) + tm_dots(size=0.2) +
+  tm_legend(legend.outside=TRUE)
+```
+
+## 练习4：用普通克里金作插值
+所需数据同练习1.
+
+主要利用到R中的`gstat`包中的`krige`函数
+
+```
+krige.spatial(formula, locations, newdata, model, ..., beta, nmax
+= Inf, nmin = 0, omax = 0, maxdist = Inf, block, nsim = 0, indicators = FALSE,
+na.action = na.pass, debug.level = 1)
+```
+
+```{r}
+# calculate point variogram
+v <- variogram(ANN_PREC ~ 1, stations.sp, width = 82000, cutoff = 82000 * 12, cloud = TRUE)
+plot(v)
+v <- variogram(ANN_PREC ~ 1, stations.sp, width = 82000, cutoff = 82000 * 12, cloud = FALSE)
+plot(v)
+v <- variogram(ANN_PREC ~ 1, stations.sp, width = 10000, cutoff = 10000 * 20, cloud = FALSE)
+plot(v)
+v
+
+# fit variogram
+v.fit <- fit.variogram(v, vgm(psill = 40, model = "Sph", range = 100000, nugget = 0))
+v.fit
+plot(v, v.fit)
+
+# kriging
+ok <- krige(ANN_PREC ~ 1, stations.sp, grd, v.fit)
+
+# Convert kriged surface to a raster object for clipping
+r <- raster(ok["var1.pred"])
+r.m <- mask(r, bound)
+
+rv <- raster(ok["var1.var"])
+rv.m <- mask(rv, bound)
+
+# Plot the map
+tm_shape(r.m) + 
+  tm_raster(n=10, palette="RdBu", auto.palette.mapping=FALSE, 
+            title="Predicted precipitation") +
+  tm_shape(stations) + tm_dots(size=0.2) +
+  tm_legend(legend.outside=TRUE)
+
+# Plot the map
+tm_shape(rv.m) + 
+  tm_raster(n=10, palette="RdBu", auto.palette.mapping=FALSE, 
+            title="Predicted precipitation\n error variance") +
+  tm_shape(stations) + tm_dots(size=0.2) +
+  tm_legend(legend.outside=TRUE)
+```
+
+
+## 练习5：用泛克里金作插值
+所需数据同练习1.
+
+```{r}
+# calculate point variogram
+v <- variogram(ANN_PREC ~ X + Y, stations.sp, width = 10000, cutoff = 10000 * 20, cloud = FALSE)
+plot(v)
+
+# fit variogram
+v.fit <- fit.variogram(v, vgm(psill = 40, model = "Sph", range = 100000, nugget = 0))
+v.fit
+plot(v, v.fit)
+
+# kriging
+uk <- krige(ANN_PREC ~ X + Y, stations.sp, grd, v.fit)
+
+# Convert kriged surface to a raster object for clipping
+r <- raster(uk["var1.pred"])
+r.m <- mask(r, bound)
+
+rv <- raster(uk["var1.var"])
+rv.m <- mask(rv, bound)
+
+# Plot the map
+tm_shape(r.m) + 
+  tm_raster(n=10, palette="RdBu", auto.palette.mapping=FALSE, 
+            title="Predicted precipitation") +
+  tm_shape(stations) + tm_dots(size=0.2) +
+  tm_legend(legend.outside=TRUE)
+
+# Plot the map
+tm_shape(rv.m) + 
+  tm_raster(n=10, palette="RdBu", auto.palette.mapping=FALSE, 
+            title="Predicted precipitation\n error variance") +
+  tm_shape(stations) + tm_dots(size=0.2) +
+  tm_legend(legend.outside=TRUE)
+```
+
+
