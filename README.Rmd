@@ -89,6 +89,11 @@ output:
 - Chapter 9: [地图制图](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter9.pdf)
 - Chapter 15: [空间插值](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter15.pdf)
 
+## R语言脚本
+
+- Chapter 15: [空间插值R语言实践](http://giser.me/script/chap15/spat_intp.html)，[工作目录(数据，源码)](https://github.com/Jianghao/ucasgis/tree/gh-pages/script/chap15/)
+
+
 ## 数据下载
 
 数据目录：https://github.com/Jianghao/ucasgis/tree/gh-pages/datasets_v7/
