@@ -12,6 +12,14 @@ output:
 ---
 
 ```{r include=FALSE}
+library(sf)
+library(ggplot2)
+library(knitr)
+library(raster)
+library(rgdal)
+library(tmap)
+library(gstat)
+library(ggmap)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
@@ -37,17 +45,14 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 #### `stations`数据探索
 ```{r}
 ## 加载stations数据
-library(sf)
 stations <- read_sf("stations.shp")
-## 显示stations的属性
-library(knitr)
+## 显示stations的属性表格
 kable(head(stations), caption = "Attibute of Stations")
 str(stations)
 ```
 
-可视化stations数据
+可视化stations数据，包括显示降水的时空变化情况。分别采用`ggplot2`
 ```{r}
-library(ggplot2)
 stations %>% ggplot() + geom_sf(aes(size = ANN_PREC, colour = ANN_PREC))
 plot(stations)
 ```
@@ -56,8 +61,6 @@ plot(stations)
 #### `idoutlgd`轮廓的栅格数据
 
 ```{r}
-library(raster)
-library(rgdal)
 bound <- raster("idoutlgd/w001001.adf")
 sum(bound)
 plot(bound)
@@ -89,8 +92,7 @@ ggplot(stations, aes(x = Long, y = ANN_PREC)) +
 ```{r}
 ggplot(stations, aes(x = Lat, y = ANN_PREC)) +
   geom_point(aes(size = ANN_PREC)) +
-  geom_smooth() +
-  theme_bw()
+  geom_smooth()
 ```
 
 ### step 3: 整体多项式插值
@@ -100,28 +102,22 @@ ggplot(stations, aes(x = Lat, y = ANN_PREC)) +
 ```{r}
 # Define the 1st order polynomial equation
 f.1 <- as.formula(ANN_PREC ~ X + Y)
-
 # Add X and Y to station and bound
 coord <- st_coordinates(stations)
 stations$X <- as.vector(coord[,1])
 stations$Y <- as.vector(coord[,2])
-
 # Run the regression model
 lm.1 <- lm( f.1, data = stations)
-
 # Use the regression model output to interpolate the surface
 grd <- as(bound, 'SpatialGridDataFrame')
 coord <- coordinates(grd)
 grd$X <- coord[,1]
 grd$Y <- coord[,2]
 dat.1st <- SpatialGridDataFrame(grd, data.frame(var1.pred = predict(lm.1, newdata=grd))) 
-
 # Clip the interpolated raster to bound
 r <- raster(dat.1st)
 r.m <- mask(r, bound)
-
 # Plot the map
-library(tmap)
 tm_shape(r.m) + 
   tm_raster(n=10, palette="RdBu", auto.palette.mapping=FALSE, 
             title="Predicted precipitation") +
@@ -135,22 +131,17 @@ tm_shape(r.m) +
 ```{r}
 # Define the 2nd order polynomial equation
 f.2 <- as.formula(ANN_PREC ~ X + Y + I(X*X)+I(Y*Y) + I(X*Y))
-
 # Add X and Y to station and bound
 coord <- st_coordinates(stations)
 stations$X <- as.vector(coord[,1])
 stations$Y <- as.vector(coord[,2])
- 
 # Run the regression model
 lm.2 <- lm( f.2, data= stations)
-
 # Use the regression model output to interpolate the surface
 dat.2nd <- SpatialGridDataFrame(grd, data.frame(var1.pred = predict(lm.2, newdata=grd))) 
-
 # Clip the interpolated raster to bound
 r   <- raster(dat.2nd)
 r.m <- mask(r, bound)
-
 # Plot the map
 tm_shape(r.m) + 
   tm_raster(n=10, palette="RdBu", auto.palette.mapping=FALSE, 
@@ -174,22 +165,34 @@ step 1：加载鹿的数据集
 deer <- read_sf("deer.shp")
 deer %>% ggplot() + geom_sf(aes(size = SIGHTINGS, colour = SIGHTINGS))
 plot(deer)
+
+deer <- sf::st_transform(deer, "+init=epsg:4326")
+coord <- st_coordinates(deer)
+deer$X <- as.vector(coord[,1])
+deer$Y <- as.vector(coord[,2])
+map <- get_map(location = c(lon = -133.205, lat = 55.912), zoom = 15, 
+               maptype = "terrain", source = "google", language = "zh-CN")
+ggmap(map) +
+  geom_density2d(data = deer, aes(x = X, y = Y), alpha = 0.5, colour = "blue", bins = 8) +
+  stat_density2d(data = deer, aes(x = X, y = Y, fill = ..level.., alpha = ..level..),
+                   bins = 30, geom = "polygon", show.legend = T, na.rm = T) +
+  scale_fill_gradient(low = "green", high = "red") +
+  scale_alpha(range = c(0.00, 0.3), guide = FALSE) +
+  geom_point(data = deer, aes(x = X, y = Y, size = SIGHTINGS, colour = SIGHTINGS)) +
+  labs(x="Longitude", y="Latitude") +
+  theme(legend.position = "none")
 ```
 
 
 ## 练习3：利用IDW做插值
 
 ```{r}
-library(gstat)
-
 stations.sp <- as(stations, 'Spatial')
 # Interpolate the grid cells using a power value of 2 (idp=2.0)
 P.idw <- gstat::idw(ANN_PREC ~ 1, stations.sp, newdata=grd, idp=2.0, nmax = 10)
-
 # Convert to raster object then clip to Texas
 r       <- raster(P.idw)
 r.m     <- mask(r, bound)
-
 # Plot
 tm_shape(r.m) + 
   tm_raster(n=10,palette = "RdBu", auto.palette.mapping = FALSE,
@@ -199,9 +202,7 @@ tm_shape(r.m) +
 ```
 
 ## 练习4：用普通克里金作插值
-所需数据同练习1.
-
-主要利用到R中的`gstat`包中的`krige`函数
+所需数据同练习1. 主要利用到R中的`gstat`包中的`krige`函数, 用法如下：
 
 ```
 krige.spatial(formula, locations, newdata, model, ..., beta, nmax
@@ -218,30 +219,24 @@ plot(v)
 v <- variogram(ANN_PREC ~ 1, stations.sp, width = 10000, cutoff = 10000 * 20, cloud = FALSE)
 plot(v)
 v
-
 # fit variogram
 v.fit <- fit.variogram(v, vgm(psill = 40, model = "Sph", range = 100000, nugget = 0))
 v.fit
 plot(v, v.fit)
-
 # kriging
 ok <- krige(ANN_PREC ~ 1, stations.sp, grd, v.fit)
-
 # Convert kriged surface to a raster object for clipping
 r <- raster(ok["var1.pred"])
 r.m <- mask(r, bound)
-
 rv <- raster(ok["var1.var"])
 rv.m <- mask(rv, bound)
-
-# Plot the map
+# Plot the prediction
 tm_shape(r.m) + 
   tm_raster(n=10, palette="RdBu", auto.palette.mapping=FALSE, 
             title="Predicted precipitation") +
   tm_shape(stations) + tm_dots(size=0.2) +
   tm_legend(legend.outside=TRUE)
-
-# Plot the map
+# Plot the prediction error variance
 tm_shape(rv.m) + 
   tm_raster(n=10, palette="RdBu", auto.palette.mapping=FALSE, 
             title="Predicted precipitation\n error variance") +
@@ -257,29 +252,23 @@ tm_shape(rv.m) +
 # calculate point variogram
 v <- variogram(ANN_PREC ~ X + Y, stations.sp, width = 10000, cutoff = 10000 * 20, cloud = FALSE)
 plot(v)
-
 # fit variogram
 v.fit <- fit.variogram(v, vgm(psill = 40, model = "Sph", range = 100000, nugget = 0))
 v.fit
 plot(v, v.fit)
-
 # kriging
 uk <- krige(ANN_PREC ~ X + Y, stations.sp, grd, v.fit)
-
 # Convert kriged surface to a raster object for clipping
 r <- raster(uk["var1.pred"])
 r.m <- mask(r, bound)
-
 rv <- raster(uk["var1.var"])
 rv.m <- mask(rv, bound)
-
 # Plot the map
 tm_shape(r.m) + 
   tm_raster(n=10, palette="RdBu", auto.palette.mapping=FALSE, 
             title="Predicted precipitation") +
   tm_shape(stations) + tm_dots(size=0.2) +
   tm_legend(legend.outside=TRUE)
-
 # Plot the map
 tm_shape(rv.m) + 
   tm_raster(n=10, palette="RdBu", auto.palette.mapping=FALSE, 
