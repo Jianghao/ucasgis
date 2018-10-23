@@ -86,7 +86,7 @@ output:
 
 ## 课件下载
 
-- Chapter 6: [几何校正](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter6.pdf)
+- Chapter 6: [几何校正](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter6.pptx)
 - Chapter 9: [地图制图](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter9.pdf)
 - Chapter 15: [空间插值](https://github.com/Jianghao/ucasgis/blob/gh-pages/slides/chapter15.pdf)
 
